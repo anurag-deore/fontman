@@ -1,12 +1,29 @@
 // renderer.js
 
-document.addEventListener('DOMContentLoaded', () => {
+// We no longer require system-font-families directly here.
+// We will access it via the 'electronAPI' exposed by the preload script.
+
+document.addEventListener('DOMContentLoaded', async () => { // Made the event listener async
   const fontListElement = document.getElementById('font-list');
   const fontPreviewElement = document.getElementById('font-preview');
   const cssCodeContainerElement = document.getElementById('css-code-container');
   const cssCodeElement = document.getElementById('css-code');
   const copyCssButton = document.getElementById('copy-css-button');
   const messageBox = document.getElementById('message-box');
+
+  // Get references to the new input elements
+  const customTextInput = document.getElementById('custom-text');
+  const fontWeightSelect = document.getElementById('font-weight');
+  const fontSizeInput = document.getElementById('font-size');
+  const textDecorationSelect = document.getElementById('text-decoration');
+  const fontSearchInput = document.getElementById('font-search'); // Get reference to the search input
+
+  // Variable to store the full list of fonts
+  let allFonts = [];
+
+  // Set initial text in the CSS code block
+  cssCodeElement.textContent = '/* Select a font to see its CSS */';
+
 
   // Function to display a message in the message box
   function showMessage(message, duration = 2000) {
@@ -17,62 +34,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }, duration);
   }
 
-  // --- Font Listing Logic (Placeholder) ---
-  // In a real Electron app, you would use Node.js APIs (potentially with a native module)
-  // to list system fonts here. This is a complex, OS-specific task.
-  // For demonstration, we'll use a placeholder list.
+  // --- Font Listing Logic using IPC ---
+  console.log("Attempting to list system fonts via IPC...");
 
-  const systemFonts = [
-    'Arial', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Georgia',
-    'Times New Roman', 'Courier New', 'Lucida Console', 'Impact',
-    'Comic Sans MS', 'Roboto', 'Open Sans', 'Lato' // Added more common ones
-    // Add logic here to get actual system fonts
-    // Example (conceptual - requires Node.js fs and path, potentially a font parsing library):
-    /*
-    const fs = require('fs');
-    const path = require('path');
-    const fontDirs = [
-        // Common font directories for different OS
-        '/System/Library/Fonts', // macOS
-        '/Library/Fonts', // macOS
-        path.join(process.env.HOME, 'Library/Fonts'), // macOS
-        'C:\\Windows\\Fonts', // Windows
-        '/usr/share/fonts', // Linux
-        '/usr/local/share/fonts' // Linux
-    ];
-    let availableFonts = [];
-    fontDirs.forEach(dir => {
-        if (fs.existsSync(dir)) {
-            fs.readdirSync(dir).forEach(file => {
-                if (file.endsWith('.ttf') || file.endsWith('.otf') || file.endsWith('.woff') || file.endsWith('.woff2')) {
-                    // You would need a font parsing library here to get the actual font family name
-                    // For simplicity, we'll just use the filename (not accurate)
-                    const fontName = path.basename(file, path.extname(file));
-                    if (!availableFonts.includes(fontName)) {
-                        availableFonts.push(fontName);
-                    }
-                }
-            });
-        }
-    });
-    displayFonts(availableFonts);
-    */
-  ];
+  try {
+    // Call the function exposed by the preload script to get fonts from the main process
+    const fontFamilies = await window.electronAPI.getSystemFonts();
 
-  // Display the placeholder fonts initially
-  displayFonts(systemFonts);
-  showMessage("Displaying a placeholder list of common fonts. Actual system font listing requires additional implementation.", 5000);
+    console.log("Fonts received via IPC:", fontFamilies.length);
 
-
-  // Function to display fonts in the list
-  function displayFonts(fonts) {
-    fontListElement.innerHTML = ''; // Clear loading message
-    if (fonts.length === 0) {
+    if (fontFamilies.length > 0) {
+      allFonts = fontFamilies; // Store the full list
+      displayFonts(allFonts); // Display the full list initially
+    } else {
+      console.log("No fonts received via IPC.");
       fontListElement.innerHTML = '<li class="p-2 text-gray-600">No fonts found or accessible.</li>';
+      showMessage("Could not access system fonts.", 3000);
+    }
+
+  } catch (error) {
+    console.error("Error listing fonts via IPC:", error);
+    fontListElement.innerHTML = '<li class="p-2 text-gray-600">Error accessing fonts. Check console.</li>';
+    showMessage("Error accessing system fonts. See console for details.", 5000);
+  }
+
+
+  // Function to display fonts in the list (now takes a list to display)
+  function displayFonts(fontsToDisplay) {
+    fontListElement.innerHTML = ''; // Clear current list
+    console.log("displayFonts called with fonts:", fontsToDisplay.length);
+    if (fontsToDisplay.length === 0) {
+      fontListElement.innerHTML = '<li class="p-2 text-gray-600">No matching fonts found.</li>';
       return;
     }
-    fonts.sort(); // Sort alphabetically
-    fonts.forEach(fontName => {
+    fontsToDisplay.sort(); // Sort alphabetically by family name
+    fontsToDisplay.forEach(fontName => {
       const listItem = document.createElement('li');
       listItem.classList.add('font-list-item', 'p-2', 'rounded-md', 'text-gray-700');
       listItem.textContent = fontName;
@@ -81,14 +77,103 @@ document.addEventListener('DOMContentLoaded', () => {
       listItem.style.fontFamily = `'${fontName}', sans-serif`;
       fontListElement.appendChild(listItem);
     });
+    console.log("Fonts displayed in the list. Number of fonts:", fontsToDisplay.length);
   }
+
+  // --- Function to get the currently selected font name from the list ---
+  function getSelectedFontName() {
+    const selectedItem = fontListElement.querySelector('.font-list-item.bg-blue-200');
+    return selectedItem ? selectedItem.dataset.fontName : null;
+  }
+
+  // --- Function to Display Font Details and CSS ---
+  // This function now handles updating ALL preview styles and generating CSS
+  function displayFontDetails(fontName) {
+    // Get current style values from inputs
+    const customText = customTextInput.value || "The quick brown fox jumps over the lazy dog."; // Default text
+    const fontWeight = fontWeightSelect.value;
+    const fontSize = fontSizeInput.value + 'px';
+    const textDecoration = textDecorationSelect.value;
+
+    // Update preview text and style
+    fontPreviewElement.textContent = customText;
+    fontPreviewElement.style.fontWeight = fontWeight;
+    fontPreviewElement.style.fontSize = fontSize;
+    fontPreviewElement.style.textDecoration = textDecoration;
+
+    // Set font family only if a fontName is provided
+    if (fontName) {
+      fontPreviewElement.style.fontFamily = `'${fontName}', sans-serif`;
+
+      // Generate CSS code
+      let cssCode = `font-family: '${fontName}', sans-serif;`;
+
+      // Add other properties if they are not default
+      if (fontWeight !== 'normal') {
+        cssCode += `\nfont-weight: ${fontWeight};`;
+      }
+      if (fontSize !== '16px') { // Assuming 16px is the default size
+        cssCode += `\nfont-size: ${fontSize};`;
+      }
+      if (textDecoration !== 'none') {
+        cssCode += `\ntext-decoration: ${textDecoration};`;
+      }
+      cssCodeElement.textContent = cssCode;
+    } else {
+      // If no font is selected, reset font family and show placeholder CSS
+      fontPreviewElement.style.fontFamily = ''; // Reset to default browser font
+      cssCodeElement.textContent = '/* Select a font to see its CSS */';
+    }
+  }
+
+  // --- Event Listeners for Style Controls ---
+  // When a style control changes, get the selected font and update details
+  customTextInput.addEventListener('input', () => {
+    const selectedFont = getSelectedFontName();
+    displayFontDetails(selectedFont);
+  });
+
+  fontWeightSelect.addEventListener('change', () => {
+    const selectedFont = getSelectedFontName();
+    displayFontDetails(selectedFont);
+  });
+
+  fontSizeInput.addEventListener('input', () => {
+    const selectedFont = getSelectedFontName();
+    displayFontDetails(selectedFont);
+  });
+
+  textDecorationSelect.addEventListener('change', () => {
+    const selectedFont = getSelectedFontName();
+    displayFontDetails(selectedFont);
+  });
+
+  // --- Event Listener for Font Search Input ---
+  fontSearchInput.addEventListener('input', (event) => {
+    const searchTerm = event.target.value.toLowerCase();
+    const filteredFonts = allFonts.filter(fontName =>
+      fontName.toLowerCase().includes(searchTerm)
+    );
+    displayFonts(filteredFonts);
+
+    // Check if the currently selected font is still in the filtered list
+    const selectedFontName = getSelectedFontName();
+    if (selectedFontName && !filteredFonts.includes(selectedFontName)) {
+      // If the selected font is filtered out, clear the selection and update preview/CSS
+      fontListElement.querySelectorAll('.font-list-item').forEach(item => {
+        item.classList.remove('bg-blue-200', 'font-semibold');
+      });
+      displayFontDetails(null); // Call with null to reset preview/CSS
+    }
+  });
+
 
   // --- Event Listener for Font List Clicks ---
   fontListElement.addEventListener('click', (event) => {
     const target = event.target;
     if (target.classList.contains('font-list-item')) {
       const selectedFont = target.dataset.fontName;
-      displayFontDetails(selectedFont);
+      displayFontDetails(selectedFont); // Update preview and CSS for the selected font
 
       // Remove active class from previous selection and add to current
       fontListElement.querySelectorAll('.font-list-item').forEach(item => {
@@ -98,23 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Function to Display Font Details and CSS ---
-  function displayFontDetails(fontName) {
-    // Update preview text style
-    fontPreviewElement.style.fontFamily = `'${fontName}', sans-serif`;
-    fontPreviewElement.textContent = `Preview of ${fontName}`;
-
-    // Generate CSS code
-    const cssCode = `font-family: '${fontName}', sans-serif;
-/* Add other properties as needed, e.g., */
-/* font-size: 16px; */
-/* font-weight: normal; */
-/* color: #333; */`;
-
-    // Display CSS code
-    cssCodeElement.textContent = cssCode;
-    cssCodeContainerElement.classList.remove('hidden');
-  }
 
   // --- Copy CSS Button Logic ---
   copyCssButton.addEventListener('click', () => {
@@ -128,12 +196,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
-navigator.permissions.query({ name: 'local-fonts' }).then((result) => {
-  console.log('Queried permission to local-fonts is: ', result)
-})
-
-window.queryLocalFonts().then(fonts => {
-  // If setPermissionCheckHandler returns false: fonts.length is 0
-  // If setPermissionCheckHandler returns false: fonts.length is about 1000 on my local machine
-  console.log(fonts)
-})

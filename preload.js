@@ -1,26 +1,17 @@
 // preload.js
 
-// This script runs before the renderer process script starts,
-// in a sandboxed environment. It's used to expose specific APIs
-// from the main process to the renderer process in a controlled way,
-// enhancing security by preventing direct access to Node.js APIs
-// from the renderer.
+console.log("Preload script: Starting execution."); // Log start of preload script
 
-// Example: Exposing a function to the renderer (if needed later)
-// const { contextBridge, ipcRenderer } = require('electron');
-// contextBridge.exposeInMainWorld('electronAPI', {
-//   someFunction: () => ipcRenderer.invoke('some-function')
-// });
+const { contextBridge, ipcRenderer } = require('electron'); // Import contextBridge and ipcRenderer
 
-// For this basic example, we don't need to expose anything yet,
-// but it's good practice to include a preload script.
-window.addEventListener('DOMContentLoaded', () => {
-  const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
+// Expose an API to the renderer process via the contextBridge
+contextBridge.exposeInMainWorld('electronAPI', {
+  // Expose a function that sends an IPC message to the main process
+  // and returns a promise that resolves with the result
+  getSystemFonts: () => {
+    console.log("Preload script: electronAPI.getSystemFonts called."); // Log when the exposed function is called
+    return ipcRenderer.invoke('get-system-fonts');
   }
+});
 
-  for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
-  }
-})
+console.log("Preload script: Finished execution. electronAPI exposed."); // Log end of preload script

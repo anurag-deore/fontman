@@ -4,13 +4,57 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "electron": "^36.2.0"
+    "@electron/rebuild": "^3.7.2",
+    "electron": "^36.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "system-font-families": "^0.6.0"
+  },
+  "build": {
+    "appId": "com.anuragdeore.fontman",
+    "productName": "Fontman - Font Viewer",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/${os}/${arch}/*"
+    ],
+    "dmg": {
+      "contents": [
+        {
+          "x": 110,
+          "y": 150
+        },
+        {
+          "x": 240,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
   }
 }

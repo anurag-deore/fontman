@@ -7,10 +7,8 @@
     <title>Local Font Viewer (Electron)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Custom styles if needed, though Tailwind should cover most */
       body {
         font-family: 'Inter', sans-serif;
-        /* Use Inter font */
       }
 
       .font-list-item {
@@ -20,7 +18,6 @@
 
       .font-list-item:hover {
         background-color: #e2e8f0;
-        /* Tailwind gray-200 */
       }
 
       .copy-button {
@@ -29,35 +26,107 @@
 
       .copy-button:hover {
         background-color: #4a5568;
-        /* Tailwind gray-700 */
+      }
+
+      #css-code-container pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .font-list-container {
+        overflow-y: auto;
+        max-height: 70vh;
+        flex-grow: 1;
+      }
+
+      #font-preview {
+        overflow-y: auto;
+        align-items: unset;
+        justify-content: unset;
+        text-align: center;
+        display: block;
+        line-height: normal;
+        max-height: 300px;
       }
     </style>
   </head>
 
   <body class="bg-gray-100 p-4 min-h-screen flex flex-col">
 
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Local Font Viewer</h1>
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-3">Local Font Viewer</h1>
 
     <div class="flex flex-col md:flex-row flex-grow gap-4">
 
-      <div class="w-full md:w-1/3 bg-white rounded-lg shadow-md p-4 overflow-y-auto max-h-[70vh]">
+      <div class="w-full md:w-1/3 bg-white rounded-lg shadow-md p-4 max-h-full flex flex-col">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Available Fonts</h2>
-        <ul id="font-list" class="space-y-2">
-          <li class="font-list-item p-2 rounded-md text-gray-700">Loading fonts...</li>
-        </ul>
+
+        <div class="mb-4">
+          <input type="search" id="font-search"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            placeholder="Search fonts...">
+        </div>
+
+        <div class="font-list-container">
+          <ul id="font-list" class="space-y-2">
+            <li class="font-list-item p-2 rounded-md text-gray-700">Loading fonts...</li>
+          </ul>
+        </div>
       </div>
 
       <div class="w-full md:w-2/3 bg-white rounded-lg shadow-md p-4 flex flex-col">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Font Details & CSS</h2>
 
-        <div id="font-preview"
-          class="text-gray-800 text-lg mb-6 p-4 border border-gray-300 rounded-md min-h-[150px] flex items-center justify-center text-center">
-          Select a font from the list to see its preview and CSS.
+        <div class="mb-4">
+          <label for="custom-text" class="block text-gray-700 text-sm font-bold mb-2">Custom Text:</label>
+          <input type="text" id="custom-text"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            value="The quick brown fox jumps over the lazy dog.">
         </div>
 
-        <div id="css-code-container"
-          class="relative bg-gray-800 text-white p-4 rounded-md overflow-x-auto flex-grow hidden">
-          <pre><code id="css-code" class="language-css"></code></pre>
+        <div class="flex flex-wrap gap-4 mb-6">
+          <div>
+            <label for="font-weight" class="block text-gray-700 text-sm font-bold mb-2">Weight:</label>
+            <select id="font-weight"
+              class="shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+              <option value="normal">Normal</option>
+              <option value="bold">Bold</option>
+              <option value="100">100 (Thin)</option>
+              <option value="200">200 (Extra Light)</option>
+              <option value="300">300 (Light)</option>
+              <option value="400">400 (Normal)</option>
+              <option value="500">500 (Medium)</option>
+              <option value="600">600 (Semi Bold)</option>
+              <option value="700">700 (Bold)</option>
+              <option value="800">800 (Extra Bold)</option>
+              <option value="900">900 (Black)</option>
+            </select>
+          </div>
+          <div>
+            <label for="font-size" class="block text-gray-700 text-sm font-bold mb-2">Size:</label>
+            <input type="number" id="font-size"
+              class="shadow appearance-none border rounded w-20 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              value="16" min="8" max="72"> px
+          </div>
+          <div>
+            <label for="text-decoration" class="block text-gray-700 text-sm font-bold mb-2">Decoration:</label>
+            <select id="text-decoration"
+              class="shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+              <option value="none">None</option>
+              <option value="underline">Underline</option>
+              <option value="overline">Overline</option>
+              <option value="line-through">Line Through</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="font-preview"
+          class="text-gray-800 text-lg mb-6 p-4 border border-gray-300 rounded-md min-h-[150px] overflow-y-auto"
+          style="max-height: 45vh;">
+          The quick brown fox jumps over the lazy dog.
+        </div>
+
+        <div id="css-code-container" class="relative bg-gray-800 text-white p-4 rounded-md overflow-x-auto">
+          <pre><code id="css-code" class="language-css">/* Select a font to see its CSS */</code></pre>
           <button id="copy-css-button"
             class="copy-button absolute top-2 right-2 bg-gray-600 text-white px-3 py-1 rounded-md text-sm">Copy
             CSS</button>
